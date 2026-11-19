@@ -1,0 +1,63 @@
+// Prisma Schema for Cadence Ledger
+// Configured for PostgreSQL (Supabase)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id           String        @id @default(cuid())
+  email        String        @unique
+  name         String?
+  avatarUrl    String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  transactions Transaction[]
+  budgets      Budget[]
+
+  @@map("users")
+}
+
+model Transaction {
+  id            String   @id @default(cuid())
+  userId        String
+  title         String
+  amount        Float
+  type          String   // 'income' | 'expense'
+  category      String
+  date          String   // ISO YYYY-MM-DD for fast date-based index lookup
+  paymentMethod String   // 'Credit Card' | 'Debit Card' | 'Bank Transfer' | 'Cash' | 'Digital Wallet / UPI'
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, date])
+  @@index([userId, category])
+  @@map("transactions")
+}
+
+model Budget {
+  id        String   @id @default(cuid())
+  userId    String
+  category  String
+  limit     Float
+  period    String   @default("monthly")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, category])
+  @@index([userId])
+  @@map("budgets")
+}

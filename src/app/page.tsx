@@ -16,21 +16,26 @@ import { TransactionModal } from '@/components/TransactionModal';
 import { BudgetModal } from '@/components/BudgetModal';
 import { AuthModal } from '@/components/AuthModal';
 import { AnalyticsView } from '@/components/AnalyticsView';
-import { Transaction } from '@/types/finance';
+import { RecurringManager } from '@/components/RecurringManager';
+import { RecurringModal } from '@/components/RecurringModal';
+import { Transaction, RecurringTransaction } from '@/types/finance';
 import {
   LayoutDashboard,
   BarChart3,
   Receipt,
   ShieldCheck,
   PieChart as PieIcon,
+  Repeat,
 } from 'lucide-react';
 
 function DashboardContent() {
-  const { isLoaded, setFilters } = useFinance();
-  const [activeTab, setActiveTab] = useState<'overview' | 'analytics' | 'ledger' | 'budgets'>('overview');
+  const { isLoaded, setFilters, upcomingBills } = useFinance();
+  const [activeTab, setActiveTab] = useState<'overview' | 'analytics' | 'ledger' | 'budgets' | 'recurring'>('overview');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false);
+  const [isRecurringModalOpen, setIsRecurringModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [editingRecurring, setEditingRecurring] = useState<RecurringTransaction | null>(null);
 
   const handleOpenAddModal = () => {
     setEditingTransaction(null);
@@ -40,6 +45,16 @@ function DashboardContent() {
   const handleOpenEditModal = (tx: Transaction) => {
     setEditingTransaction(tx);
     setIsAddModalOpen(true);
+  };
+
+  const handleOpenAddRecurring = () => {
+    setEditingRecurring(null);
+    setIsRecurringModalOpen(true);
+  };
+
+  const handleOpenEditRecurring = (rec: RecurringTransaction) => {
+    setEditingRecurring(rec);
+    setIsRecurringModalOpen(true);
   };
 
   const handleSelectCategoryFilter = (category: string) => {
@@ -69,7 +84,10 @@ function DashboardContent() {
       {/* Main Content Container */}
       <main className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
         {/* Insights & Limit Warning Banner */}
-        <InsightsBanner onOpenBudgetModal={() => setIsBudgetModalOpen(true)} />
+        <InsightsBanner
+          onOpenBudgetModal={() => setIsBudgetModalOpen(true)}
+          onNavigateToRecurring={() => setActiveTab('recurring')}
+        />
 
         {/* Top Summary Metrics */}
         <SummaryCards />
@@ -124,6 +142,23 @@ function DashboardContent() {
               <BarChart3 className="h-4 w-4" />
               <span>Budgets & Goals</span>
             </button>
+
+            <button
+              onClick={() => setActiveTab('recurring')}
+              className={`flex items-center gap-2 border-b-2 px-3 py-2.5 text-xs font-semibold transition ${
+                activeTab === 'recurring'
+                  ? 'border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400'
+                  : 'border-transparent text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+              }`}
+            >
+              <Repeat className="h-4 w-4" />
+              <span>Recurring & Bills</span>
+              {upcomingBills.length > 0 && (
+                <span className="rounded-full bg-amber-500/20 px-1.5 py-0.2 text-[10px] font-bold text-amber-700 dark:text-amber-300">
+                  {upcomingBills.length}
+                </span>
+              )}
+            </button>
           </div>
         </div>
 
@@ -169,6 +204,15 @@ function DashboardContent() {
             <BudgetBarChart />
           </div>
         )}
+
+        {activeTab === 'recurring' && (
+          <div className="space-y-6">
+            <RecurringManager
+              onOpenAddModal={handleOpenAddRecurring}
+              onOpenEditModal={handleOpenEditRecurring}
+            />
+          </div>
+        )}
       </main>
 
       {/* Footer */}
@@ -197,6 +241,15 @@ function DashboardContent() {
       <BudgetModal
         isOpen={isBudgetModalOpen}
         onClose={() => setIsBudgetModalOpen(false)}
+      />
+
+      <RecurringModal
+        isOpen={isRecurringModalOpen}
+        onClose={() => {
+          setIsRecurringModalOpen(false);
+          setEditingRecurring(null);
+        }}
+        editRecurring={editingRecurring}
       />
 
       <AuthModal />

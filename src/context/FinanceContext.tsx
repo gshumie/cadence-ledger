@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react';
 import {
   Transaction,
+  RecurringTransaction,
   BudgetLimit,
   CategoryBudgetStatus,
   FinancialSummary,
@@ -13,7 +14,8 @@ import {
   Currency,
 } from '@/types/finance';
 import { useAuth } from '@/context/AuthContext';
-import { INITIAL_BUDGETS, INITIAL_TRANSACTIONS } from '@/utils/initialData';
+import { INITIAL_BUDGETS, INITIAL_TRANSACTIONS, INITIAL_RECURRING } from '@/utils/initialData';
+import { getBillDueStatus, DueStatus } from '@/utils/recurring';
 import {
   getCategoryColor,
   formatCurrency as formatCurrencyUtil,
@@ -27,8 +29,12 @@ export interface UserSession {
   name: string;
 }
 
+export type UpcomingBillItem = RecurringTransaction & { dueStatus: DueStatus };
+
 interface FinanceContextType {
   transactions: Transaction[];
+  recurringTransactions: RecurringTransaction[];
+  upcomingBills: UpcomingBillItem[];
   budgets: BudgetLimit[];
   selectedMonth: string; // 'YYYY-MM' or 'all'
   filters: TransactionFilters;
@@ -47,6 +53,11 @@ interface FinanceContextType {
   addTransaction: (data: Omit<Transaction, 'id' | 'createdAt'>) => Promise<void>;
   updateTransaction: (id: string, data: Partial<Transaction>) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
+  addRecurring: (data: Omit<RecurringTransaction, 'id' | 'createdAt' | 'updatedAt' | 'userId'>) => Promise<void>;
+  updateRecurring: (id: string, data: Partial<RecurringTransaction>) => Promise<void>;
+  deleteRecurring: (id: string) => Promise<void>;
+  toggleRecurringActive: (id: string, isActive: boolean) => Promise<void>;
+  processRecurringNow: (id: string) => Promise<{ success: boolean; message?: string }>;
   updateBudget: (category: ExpenseCategory, limit: number) => Promise<void>;
   setSelectedMonth: (month: string) => void;
   setFilters: React.Dispatch<React.SetStateAction<TransactionFilters>>;
@@ -80,6 +91,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const { accessToken, user: authUser, isDemoUser } = useAuth();
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [recurringTransactions, setRecurringTransactions] = useState<RecurringTransaction[]>([]);
   const [budgets, setBudgets] = useState<BudgetLimit[]>(INITIAL_BUDGETS);
   const [selectedMonth, setSelectedMonth] = useState<string>('2026-11');
   const [filters, setFilters] = useState<TransactionFilters>(defaultFilters);
@@ -197,6 +209,18 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
           } catch {}
         }
       }
+
+      // 4. Fetch recurring transactions from API
+      const recRes = await authFetch('/api/recurring');
+      if (recRes.ok) {
+        const recJson = await recRes.json();
+        if (Array.isArray(recJson.data)) {
+          setRecurringTransactions(recJson.data);
+          try {
+            localStorage.setItem('cadence_recurring_cache', JSON.stringify(recJson.data));
+          } catch {}
+        }
+      }
     } catch (err) {
       console.warn('API fetch encountered an error, falling back to cached/initial data:', err);
       // Fallback cache
@@ -207,11 +231,18 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       } catch {
         setTransactions(INITIAL_TRANSACTIONS);
       }
+      try {
+        const cachedRec = localStorage.getItem('cadence_recurring_cache');
+        if (cachedRec) setRecurringTransactions(JSON.parse(cachedRec));
+        else setRecurringTransactions(INITIAL_RECURRING.map((r) => ({ ...r, userId: authUser.id })));
+      } catch {
+        setRecurringTransactions(INITIAL_RECURRING.map((r) => ({ ...r, userId: authUser.id })));
+      }
     } finally {
       setIsSyncing(false);
       setIsLoaded(true);
     }
-  }, [authFetch]);
+  }, [authFetch, authUser.id]);
 
   useEffect(() => {
     refreshData();
@@ -372,6 +403,23 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     return budgetStatuses.filter((b) => b.isWarning || b.isExceeded);
   }, [budgetStatuses]);
 
+  // Smart alerts: upcoming bills due within 7 days or overdue
+  const upcomingBills = useMemo<UpcomingBillItem[]>(() => {
+    return recurringTransactions
+      .filter((r) => r.isActive && r.type === 'expense')
+      .map((r) => ({
+        ...r,
+        dueStatus: getBillDueStatus(r.nextDate),
+      }))
+      .filter(
+        (r) =>
+          r.dueStatus.status === 'overdue' ||
+          r.dueStatus.status === 'today' ||
+          r.dueStatus.status === 'due_soon'
+      )
+      .sort((a, b) => new Date(a.nextDate).getTime() - new Date(b.nextDate).getTime());
+  }, [recurringTransactions]);
+
   // Monthly Chart Data
   const monthlyChartData = useMemo<MonthlyChartData[]>(() => {
     const monthMap: Record<string, { income: number; expenses: number }> = {};
@@ -492,6 +540,109 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const addRecurring = async (
+    data: Omit<RecurringTransaction, 'id' | 'createdAt' | 'updatedAt' | 'userId'>
+  ) => {
+    const tempId = `rec-temp-${Date.now()}`;
+    const optimisticRec: RecurringTransaction = {
+      ...data,
+      id: tempId,
+      userId: currentUser.id,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    setRecurringTransactions((prev) =>
+      [...prev, optimisticRec].sort((a, b) => a.nextDate.localeCompare(b.nextDate))
+    );
+
+    try {
+      const res = await authFetch('/api/recurring', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.data) {
+          setRecurringTransactions((prev) =>
+            prev
+              .map((r) => (r.id === tempId ? json.data : r))
+              .sort((a, b) => a.nextDate.localeCompare(b.nextDate))
+          );
+        }
+      }
+    } catch (err) {
+      console.error('Failed to create recurring transaction via API:', err);
+    }
+  };
+
+  const updateRecurring = async (id: string, data: Partial<RecurringTransaction>) => {
+    setRecurringTransactions((prev) =>
+      prev
+        .map((r) => (r.id === id ? { ...r, ...data } : r))
+        .sort((a, b) => a.nextDate.localeCompare(b.nextDate))
+    );
+
+    try {
+      await authFetch(`/api/recurring/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+    } catch (err) {
+      console.error('Failed to update recurring transaction via API:', err);
+    }
+  };
+
+  const deleteRecurring = async (id: string) => {
+    setRecurringTransactions((prev) => prev.filter((r) => r.id !== id));
+
+    try {
+      await authFetch(`/api/recurring/${id}`, {
+        method: 'DELETE',
+      });
+    } catch (err) {
+      console.error('Failed to delete recurring transaction via API:', err);
+    }
+  };
+
+  const toggleRecurringActive = async (id: string, isActive: boolean) => {
+    await updateRecurring(id, { isActive });
+  };
+
+  const processRecurringNow = async (id: string) => {
+    try {
+      const res = await authFetch(`/api/recurring/${id}/process`, {
+        method: 'POST',
+      });
+      const json = await res.json();
+      if (res.ok && json.success) {
+        if (json.transaction) {
+          setTransactions((prev) => [json.transaction, ...prev]);
+        }
+        if (json.recurring) {
+          setRecurringTransactions((prev) =>
+            prev
+              .map((r) => (r.id === id ? json.recurring : r))
+              .sort((a, b) => a.nextDate.localeCompare(b.nextDate))
+          );
+        }
+        return { success: true, message: json.message };
+      }
+      return {
+        success: false,
+        message: json.error || 'Failed to process recurring transaction',
+      };
+    } catch (err) {
+      console.error('Error processing recurring transaction now:', err);
+      return {
+        success: false,
+        message: 'Network error occurred while processing recurring transaction',
+      };
+    }
+  };
+
   const updateBudget = async (category: ExpenseCategory, limit: number) => {
     // Optimistic update
     setBudgets((prev) => {
@@ -554,6 +705,8 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     <FinanceContext.Provider
       value={{
         transactions,
+        recurringTransactions,
+        upcomingBills,
         budgets,
         selectedMonth,
         filters,
@@ -570,6 +723,11 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         addTransaction,
         updateTransaction,
         deleteTransaction,
+        addRecurring,
+        updateRecurring,
+        deleteRecurring,
+        toggleRecurringActive,
+        processRecurringNow,
         updateBudget,
         setSelectedMonth,
         setFilters,

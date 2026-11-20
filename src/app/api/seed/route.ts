@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/auth';
 import { prisma, isDatabaseConfigured } from '@/lib/prisma';
-import { INITIAL_BUDGETS, INITIAL_TRANSACTIONS } from '@/utils/initialData';
+import { INITIAL_BUDGETS, INITIAL_TRANSACTIONS, INITIAL_RECURRING } from '@/utils/initialData';
 
 export async function POST(req: Request) {
   try {
@@ -17,6 +17,7 @@ export async function POST(req: Request) {
     // Delete existing records for this user
     await prisma.transaction.deleteMany({ where: { userId: user.id } });
     await prisma.budget.deleteMany({ where: { userId: user.id } });
+    await prisma.recurringTransaction.deleteMany({ where: { userId: user.id } });
 
     // Seed transactions
     await prisma.transaction.createMany({
@@ -42,9 +43,25 @@ export async function POST(req: Request) {
       })),
     });
 
+    // Seed recurring transactions
+    await prisma.recurringTransaction.createMany({
+      data: INITIAL_RECURRING.map((rec) => ({
+        userId: user.id,
+        title: rec.title,
+        amount: rec.amount,
+        type: rec.type,
+        category: rec.category,
+        paymentMethod: rec.paymentMethod,
+        frequency: rec.frequency,
+        nextDate: rec.nextDate,
+        isActive: rec.isActive,
+        notes: rec.notes || null,
+      })),
+    });
+
     return NextResponse.json({
       success: true,
-      message: `Successfully seeded ${INITIAL_TRANSACTIONS.length} transactions and ${INITIAL_BUDGETS.length} budgets into PostgreSQL for user ${user.email}`,
+      message: `Successfully seeded ${INITIAL_TRANSACTIONS.length} transactions, ${INITIAL_BUDGETS.length} budgets, and ${INITIAL_RECURRING.length} recurring rules into PostgreSQL for user ${user.email}`,
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Failed to seed database';

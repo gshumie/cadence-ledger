@@ -19,8 +19,9 @@ model User {
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
-  transactions Transaction[]
-  budgets      Budget[]
+  transactions          Transaction[]
+  budgets               Budget[]
+  recurringTransactions RecurringTransaction[]
 
   @@map("users")
 }
@@ -60,4 +61,26 @@ model Budget {
   @@unique([userId, category])
   @@index([userId])
   @@map("budgets")
+}
+
+model RecurringTransaction {
+  id            String   @id @default(cuid())
+  userId        String
+  title         String
+  amount        Float
+  type          String   // 'income' | 'expense'
+  category      String
+  paymentMethod String   // 'Credit Card' | 'Debit Card' | 'Bank Transfer' | 'Cash' | 'Digital Wallet / UPI'
+  frequency     String   // 'weekly' | 'monthly' | 'yearly'
+  nextDate      String   // ISO YYYY-MM-DD
+  isActive      Boolean  @default(true)
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, nextDate])
+  @@map("recurring_transactions")
 }

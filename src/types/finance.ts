@@ -44,6 +44,24 @@ export interface Transaction {
   createdAt: string;
 }
 
+export type RecurringFrequency = 'weekly' | 'monthly' | 'yearly';
+
+export interface RecurringTransaction {
+  id: string;
+  userId?: string;
+  title: string;
+  amount: number;
+  type: TransactionType;
+  category: Category;
+  paymentMethod: PaymentMethod;
+  frequency: RecurringFrequency;
+  nextDate: string; // YYYY-MM-DD
+  isActive: boolean;
+  notes?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
 export interface BudgetLimit {
   category: ExpenseCategory;
   limit: number;

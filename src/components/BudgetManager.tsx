@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { useFinance } from '@/context/FinanceContext';
-import { formatCurrency } from '@/utils/formatters';
 import { Target, AlertTriangle, AlertCircle, CheckCircle, Edit3 } from 'lucide-react';
 
 interface BudgetManagerProps {
@@ -10,7 +9,7 @@ interface BudgetManagerProps {
 }
 
 export function BudgetManager({ onOpenBudgetModal }: BudgetManagerProps) {
-  const { budgetStatuses } = useFinance();
+  const { budgetStatuses, formatCurrency } = useFinance();
 
   const totalBudgeted = budgetStatuses.reduce((acc, b) => acc + b.limit, 0);
   const totalSpent = budgetStatuses.reduce((acc, b) => acc + b.spent, 0);

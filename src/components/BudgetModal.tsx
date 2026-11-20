@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { ExpenseCategory } from '@/types/finance';
-import { EXPENSE_CATEGORIES, formatCurrency } from '@/utils/formatters';
+import { EXPENSE_CATEGORIES } from '@/utils/formatters';
 import { X, Check, Target } from 'lucide-react';
 
 interface BudgetModalProps {
@@ -12,7 +12,7 @@ interface BudgetModalProps {
 }
 
 export function BudgetModal({ isOpen, onClose }: BudgetModalProps) {
-  const { budgets, updateBudget } = useFinance();
+  const { budgets, updateBudget, formatCurrency, currencySymbol } = useFinance();
   const [localLimits, setLocalLimits] = useState<Record<ExpenseCategory, number>>(
     {} as Record<ExpenseCategory, number>
   );
@@ -94,7 +94,7 @@ export function BudgetModal({ isOpen, onClose }: BudgetModalProps) {
                   </label>
                   <div className="relative mt-2">
                     <span className="pointer-events-none absolute left-3 top-2 text-xs font-semibold text-slate-400">
-                      $
+                      {currencySymbol}
                     </span>
                     <input
                       type="number"
@@ -102,7 +102,9 @@ export function BudgetModal({ isOpen, onClose }: BudgetModalProps) {
                       min="0"
                       value={localLimits[cat] ?? 0}
                       onChange={(e) => handleLimitChange(cat, e.target.value)}
-                      className="h-8 w-full rounded-lg border border-slate-200 bg-slate-50 pl-7 pr-3 text-xs font-bold text-slate-900 transition focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:bg-slate-900"
+                      className={`h-8 w-full rounded-lg border border-slate-200 bg-slate-50 ${
+                        currencySymbol.length > 1 ? 'pl-9' : 'pl-7'
+                      } pr-3 text-xs font-bold text-slate-900 transition focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:bg-slate-900`}
                     />
                   </div>
                 </div>

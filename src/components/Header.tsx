@@ -36,6 +36,8 @@ export function Header({ onOpenAddModal, onOpenBudgetModal }: HeaderProps) {
     isSyncing,
     currentUser,
     refreshData,
+    currency,
+    setCurrency,
   } = useFinance();
   const { resolvedTheme, toggleTheme } = useTheme();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -226,6 +228,39 @@ export function Header({ onOpenAddModal, onOpenBudgetModal }: HeaderProps) {
               <RotateCcw className="h-3.5 w-3.5" />
               <span className="hidden xl:inline">Seed Demo</span>
             </button>
+
+            {/* Currency Selector (USD / ETB) */}
+            <div
+              className="flex h-9 items-center rounded-lg border border-slate-200 bg-white p-0.5 shadow-sm dark:border-slate-800 dark:bg-slate-900"
+              title="Select display currency"
+            >
+              <button
+                type="button"
+                onClick={() => setCurrency('USD')}
+                className={`flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold transition ${
+                  currency === 'USD'
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                }`}
+                title="US Dollar ($)"
+              >
+                <span>$</span>
+                <span className="hidden sm:inline">USD</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrency('ETB')}
+                className={`flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold transition ${
+                  currency === 'ETB'
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                }`}
+                title="Ethiopian Birr (Br / ETB)"
+              >
+                <span>Br</span>
+                <span className="hidden sm:inline">ETB</span>
+              </button>
+            </div>
 
             {/* Dark Mode Toggle */}
             <button

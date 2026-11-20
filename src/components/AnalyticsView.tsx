@@ -12,7 +12,8 @@ import {
   Legend,
 } from 'recharts';
 import { useFinance } from '@/context/FinanceContext';
-import { formatCurrency, formatCompactCurrency } from '@/utils/formatters';
+import { Currency } from '@/types/finance';
+import { formatCurrency } from '@/utils/formatters';
 import {
   BarChart3,
   PieChart as PieIcon,
@@ -36,10 +37,12 @@ function CustomBarTooltip({
   active,
   payload,
   label,
+  currency = 'USD',
 }: {
   active?: boolean;
   payload?: CustomTooltipPayload[];
   label?: string;
+  currency?: Currency;
 }) {
   if (active && payload && payload.length) {
     const income = payload.find((p) => p.dataKey === 'income')?.value || 0;
@@ -56,7 +59,7 @@ function CustomBarTooltip({
               Income:
             </span>
             <span className="font-semibold text-slate-900 dark:text-white">
-              {formatCurrency(income)}
+              {formatCurrency(income, currency)}
             </span>
           </div>
           <div className="flex items-center justify-between gap-4">
@@ -65,13 +68,13 @@ function CustomBarTooltip({
               Expenses:
             </span>
             <span className="font-semibold text-slate-900 dark:text-white">
-              {formatCurrency(expenses)}
+              {formatCurrency(expenses, currency)}
             </span>
           </div>
           <div className="border-t border-slate-200 pt-1.5 dark:border-slate-700 flex items-center justify-between gap-4 font-bold">
             <span className="text-slate-600 dark:text-slate-300">Net Margin:</span>
             <span className={net >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}>
-              {formatCurrency(net)}
+              {formatCurrency(net, currency)}
             </span>
           </div>
         </div>
@@ -82,7 +85,16 @@ function CustomBarTooltip({
 }
 
 export function AnalyticsView({ onSelectCategoryFilter }: AnalyticsViewProps) {
-  const { transactions, selectedMonth, summary, monthlyChartData, categorySpendingData } = useFinance();
+  const {
+    transactions,
+    selectedMonth,
+    summary,
+    monthlyChartData,
+    categorySpendingData,
+    currency,
+    formatCurrency,
+    formatCompactCurrency,
+  } = useFinance();
 
   // Filter current period transactions
   const currentPeriodTxs = useMemo(() => {
@@ -218,7 +230,7 @@ export function AnalyticsView({ onSelectCategoryFilter }: AnalyticsViewProps) {
                   tickFormatter={(v) => formatCompactCurrency(v)}
                   dx={-4}
                 />
-                <Tooltip content={<CustomBarTooltip />} />
+                <Tooltip content={<CustomBarTooltip currency={currency} />} />
                 <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ paddingBottom: 12, fontSize: 12 }} />
                 <Bar dataKey="income" name="Monthly Income" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={32} />
                 <Bar dataKey="expenses" name="Monthly Expenses" fill="#6366f1" radius={[4, 4, 0, 0]} maxBarSize={32} />

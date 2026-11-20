@@ -11,7 +11,8 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { useFinance } from '@/context/FinanceContext';
-import { formatCurrency, formatCompactCurrency } from '@/utils/formatters';
+import { Currency } from '@/types/finance';
+import { formatCurrency } from '@/utils/formatters';
 import { TrendingUp } from 'lucide-react';
 
 interface CustomTooltipPayload {
@@ -23,10 +24,12 @@ function CashFlowCustomTooltip({
   active,
   payload,
   label,
+  currency = 'USD',
 }: {
   active?: boolean;
   payload?: CustomTooltipPayload[];
   label?: string;
+  currency?: Currency;
 }) {
   if (active && payload && payload.length) {
     const income = payload.find((p) => p.dataKey === 'income')?.value || 0;
@@ -43,7 +46,7 @@ function CashFlowCustomTooltip({
               Income:
             </span>
             <span className="font-semibold text-slate-900 dark:text-white">
-              {formatCurrency(income)}
+              {formatCurrency(income, currency)}
             </span>
           </div>
           <div className="flex items-center justify-between gap-4">
@@ -52,13 +55,13 @@ function CashFlowCustomTooltip({
               Expenses:
             </span>
             <span className="font-semibold text-slate-900 dark:text-white">
-              {formatCurrency(expenses)}
+              {formatCurrency(expenses, currency)}
             </span>
           </div>
           <div className="mt-2 border-t border-slate-200 pt-1.5 dark:border-slate-700 flex items-center justify-between gap-4 font-bold">
             <span className="text-slate-600 dark:text-slate-300">Net Flow:</span>
             <span className={net >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}>
-              {formatCurrency(net)}
+              {formatCurrency(net, currency)}
             </span>
           </div>
         </div>
@@ -69,7 +72,7 @@ function CashFlowCustomTooltip({
 }
 
 export function CashFlowChart() {
-  const { monthlyChartData } = useFinance();
+  const { monthlyChartData, currency, formatCompactCurrency } = useFinance();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -143,7 +146,7 @@ export function CashFlowChart() {
                 tickFormatter={(v) => formatCompactCurrency(v)}
                 dx={-4}
               />
-              <Tooltip content={<CashFlowCustomTooltip />} />
+              <Tooltip content={<CashFlowCustomTooltip currency={currency} />} />
               <Area
                 type="monotone"
                 dataKey="income"

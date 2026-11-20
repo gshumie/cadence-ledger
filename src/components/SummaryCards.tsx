@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useFinance } from '@/context/FinanceContext';
-import { formatCurrency, formatPercentage } from '@/utils/formatters';
+import { formatPercentage } from '@/utils/formatters';
 import {
   Wallet,
   TrendingUp,
@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 
 export function SummaryCards() {
-  const { summary, selectedMonth } = useFinance();
+  const { summary, selectedMonth, formatCurrency } = useFinance();
 
   const isAllTime = selectedMonth === 'all';
 

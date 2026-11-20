@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { Transaction, TransactionType, Category, PaymentMethod } from '@/types/finance';
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '@/utils/formatters';
-import { X, Check, DollarSign, Calendar, Tag, CreditCard, AlignLeft } from 'lucide-react';
+import { X, Check, Calendar, Tag, CreditCard, AlignLeft } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 interface TransactionModalProps {
@@ -14,7 +14,7 @@ interface TransactionModalProps {
 }
 
 export function TransactionModal({ isOpen, onClose, editTransaction }: TransactionModalProps) {
-  const { addTransaction, updateTransaction } = useFinance();
+  const { addTransaction, updateTransaction, currencySymbol } = useFinance();
 
   const [type, setType] = useState<TransactionType>('expense');
   const [title, setTitle] = useState('');
@@ -69,7 +69,7 @@ export function TransactionModal({ isOpen, onClose, editTransaction }: Transacti
       return;
     }
     if (isNaN(parsedAmount) || parsedAmount <= 0) {
-      setError('Please enter a valid amount greater than $0.');
+      setError(`Please enter a valid amount greater than ${currencySymbol}0.`);
       return;
     }
     if (!date) {
@@ -184,10 +184,12 @@ export function TransactionModal({ isOpen, onClose, editTransaction }: Transacti
 
             <div>
               <label className="mb-1 block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Amount ($)
+                Amount ({currencySymbol})
               </label>
               <div className="relative">
-                <DollarSign className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                <span className="pointer-events-none absolute left-3 top-2.5 text-xs font-bold text-slate-400">
+                  {currencySymbol}
+                </span>
                 <input
                   type="number"
                   step="0.01"
@@ -195,7 +197,9 @@ export function TransactionModal({ isOpen, onClose, editTransaction }: Transacti
                   placeholder="0.00"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 pl-8 pr-3 text-xs font-bold text-slate-900 transition focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:bg-slate-900"
+                  className={`h-10 w-full rounded-xl border border-slate-200 bg-slate-50 ${
+                    currencySymbol.length > 1 ? 'pl-9' : 'pl-8'
+                  } pr-3 text-xs font-bold text-slate-900 transition focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:bg-slate-900`}
                   required
                 />
               </div>

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { useFinance } from '@/context/FinanceContext';
+import { Currency } from '@/types/finance';
 import { formatCurrency } from '@/utils/formatters';
 import { PieChart as PieIcon } from 'lucide-react';
 
@@ -17,9 +18,11 @@ interface CustomTooltipEntry {
 function CategoryDonutCustomTooltip({
   active,
   payload,
+  currency = 'USD',
 }: {
   active?: boolean;
   payload?: CustomTooltipEntry[];
+  currency?: Currency;
 }) {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
@@ -28,7 +31,7 @@ function CategoryDonutCustomTooltip({
         <p className="text-xs font-bold text-slate-800 dark:text-slate-100">{data.category}</p>
         <div className="mt-1 flex items-center gap-2 text-xs">
           <span className="font-semibold text-indigo-600 dark:text-indigo-400">
-            {formatCurrency(data.amount)}
+            {formatCurrency(data.amount, currency)}
           </span>
           <span className="text-slate-400">({data.percentage}%)</span>
         </div>
@@ -39,7 +42,7 @@ function CategoryDonutCustomTooltip({
 }
 
 export function CategoryDonutChart() {
-  const { categorySpendingData, summary } = useFinance();
+  const { categorySpendingData, summary, currency, formatCurrency } = useFinance();
   const [mounted, setMounted] = useState(false);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
@@ -83,7 +86,7 @@ export function CategoryDonutChart() {
           <div className="relative h-64 sm:col-span-6">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Tooltip content={<CategoryDonutCustomTooltip />} />
+                <Tooltip content={<CategoryDonutCustomTooltip currency={currency} />} />
                 <Pie
                   data={categorySpendingData}
                   cx="50%"

@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import { useFinance } from '@/context/FinanceContext';
-import { formatCurrency } from '@/utils/formatters';
 import { AlertTriangle, AlertCircle, ChevronRight, X, Sparkles } from 'lucide-react';
 
 interface InsightsBannerProps {
@@ -10,7 +9,7 @@ interface InsightsBannerProps {
 }
 
 export function InsightsBanner({ onOpenBudgetModal }: InsightsBannerProps) {
-  const { budgetStatuses, summary } = useFinance();
+  const { budgetStatuses, summary, formatCurrency } = useFinance();
   const [dismissed, setDismissed] = useState(false);
 
   if (dismissed) return null;

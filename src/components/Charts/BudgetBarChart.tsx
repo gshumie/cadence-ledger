@@ -12,7 +12,8 @@ import {
   Legend,
 } from 'recharts';
 import { useFinance } from '@/context/FinanceContext';
-import { formatCurrency, formatCompactCurrency } from '@/utils/formatters';
+import { Currency } from '@/types/finance';
+import { formatCurrency } from '@/utils/formatters';
 import { Target } from 'lucide-react';
 
 interface CustomTooltipData {
@@ -28,9 +29,11 @@ interface CustomTooltipData {
 function BudgetBarCustomTooltip({
   active,
   payload,
+  currency = 'USD',
 }: {
   active?: boolean;
   payload?: CustomTooltipData[];
+  currency?: Currency;
 }) {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
@@ -41,7 +44,7 @@ function BudgetBarCustomTooltip({
           <div className="flex items-center justify-between gap-4">
             <span className="text-slate-500 dark:text-slate-400">Budget Limit:</span>
             <span className="font-semibold text-slate-900 dark:text-white">
-              {formatCurrency(data.budget)}
+              {formatCurrency(data.budget, currency)}
             </span>
           </div>
           <div className="flex items-center justify-between gap-4">
@@ -53,7 +56,7 @@ function BudgetBarCustomTooltip({
                   : 'text-indigo-600 dark:text-indigo-400'
               }`}
             >
-              {formatCurrency(data.actual)}
+              {formatCurrency(data.actual, currency)}
             </span>
           </div>
           <div className="flex items-center justify-between gap-4 border-t border-slate-200 pt-1 dark:border-slate-700">
@@ -78,7 +81,7 @@ function BudgetBarCustomTooltip({
 }
 
 export function BudgetBarChart() {
-  const { budgetStatuses } = useFinance();
+  const { budgetStatuses, currency, formatCompactCurrency } = useFinance();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -152,7 +155,7 @@ export function BudgetBarChart() {
                 tickFormatter={(v) => formatCompactCurrency(v)}
                 dx={-4}
               />
-              <Tooltip content={<BudgetBarCustomTooltip />} />
+              <Tooltip content={<BudgetBarCustomTooltip currency={currency} />} />
               <Legend
                 verticalAlign="top"
                 align="right"

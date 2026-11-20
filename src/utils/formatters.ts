@@ -1,15 +1,41 @@
-import { ExpenseCategory, IncomeCategory } from '@/types/finance';
+import { ExpenseCategory, IncomeCategory, Currency } from '@/types/finance';
 
-export function formatCurrency(amount: number, currency: string = 'USD'): string {
+export function getCurrencySymbol(currency: Currency = 'USD'): string {
+  return currency === 'ETB' ? 'Br' : '$';
+}
+
+export function formatCurrency(amount: number, currency: Currency = 'USD'): string {
+  const isNegative = amount < 0;
+  const absAmount = Math.abs(amount);
+
+  if (currency === 'ETB') {
+    const formatted = new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(absAmount);
+    return `${isNegative ? '-' : ''}Br ${formatted}`;
+  }
+
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency,
+    currency: 'USD',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(amount);
 }
 
-export function formatCompactCurrency(amount: number): string {
+export function formatCompactCurrency(amount: number, currency: Currency = 'USD'): string {
+  const isNegative = amount < 0;
+  const absAmount = Math.abs(amount);
+
+  if (currency === 'ETB') {
+    const formatted = new Intl.NumberFormat('en-US', {
+      notation: 'compact',
+      maximumFractionDigits: 1,
+    }).format(absAmount);
+    return `${isNegative ? '-' : ''}Br ${formatted}`;
+  }
+
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',

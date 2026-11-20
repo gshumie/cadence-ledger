@@ -10,9 +10,15 @@ import {
   CategorySpendingData,
   TransactionFilters,
   ExpenseCategory,
+  Currency,
 } from '@/types/finance';
 import { INITIAL_BUDGETS, INITIAL_TRANSACTIONS } from '@/utils/initialData';
-import { getCategoryColor } from '@/utils/formatters';
+import {
+  getCategoryColor,
+  formatCurrency as formatCurrencyUtil,
+  formatCompactCurrency as formatCompactCurrencyUtil,
+  getCurrencySymbol,
+} from '@/utils/formatters';
 
 export interface UserSession {
   id: string;
@@ -25,6 +31,11 @@ interface FinanceContextType {
   budgets: BudgetLimit[];
   selectedMonth: string; // 'YYYY-MM' or 'all'
   filters: TransactionFilters;
+  currency: Currency;
+  setCurrency: (currency: Currency) => void;
+  currencySymbol: string;
+  formatCurrency: (amount: number, overrideCurrency?: Currency) => string;
+  formatCompactCurrency: (amount: number, overrideCurrency?: Currency) => string;
   isLoaded: boolean;
   isSyncing: boolean;
   dbStatus: 'connected' | 'disconnected' | 'connection_error';
@@ -76,6 +87,40 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     email: 'alex.finance@cadenceledger.io',
     name: 'Alex Mercer',
   });
+  const [currency, setCurrencyState] = useState<Currency>('USD');
+
+  // Load currency from localStorage on client mount
+  useEffect(() => {
+    try {
+      const savedCurrency = localStorage.getItem('cadence_currency');
+      if (savedCurrency === 'ETB' || savedCurrency === 'USD') {
+        setCurrencyState(savedCurrency);
+      }
+    } catch {}
+  }, []);
+
+  const setCurrency = useCallback((newCurrency: Currency) => {
+    setCurrencyState(newCurrency);
+    try {
+      localStorage.setItem('cadence_currency', newCurrency);
+    } catch {}
+  }, []);
+
+  const currencySymbol = useMemo(() => getCurrencySymbol(currency), [currency]);
+
+  const formatCurrency = useCallback(
+    (amount: number, overrideCurrency?: Currency) => {
+      return formatCurrencyUtil(amount, overrideCurrency || currency);
+    },
+    [currency]
+  );
+
+  const formatCompactCurrency = useCallback(
+    (amount: number, overrideCurrency?: Currency) => {
+      return formatCompactCurrencyUtil(amount, overrideCurrency || currency);
+    },
+    [currency]
+  );
 
   // Fetch initial data from PostgreSQL Backend API
   const refreshData = useCallback(async () => {
@@ -484,6 +529,11 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         budgets,
         selectedMonth,
         filters,
+        currency,
+        setCurrency,
+        currencySymbol,
+        formatCurrency,
+        formatCompactCurrency,
         isLoaded,
         isSyncing,
         dbStatus,

@@ -4,7 +4,6 @@ import React, { useState, useMemo } from 'react';
 import { useFinance } from '@/context/FinanceContext';
 import { Transaction, TransactionFilters } from '@/types/finance';
 import {
-  formatCurrency,
   formatDate,
   getCategoryColor,
   EXPENSE_CATEGORIES,
@@ -42,6 +41,7 @@ export function TransactionTable({ onOpenAddModal, onOpenEditModal }: Transactio
     deleteTransaction,
     resetFilters,
     selectedMonth,
+    formatCurrency,
   } = useFinance();
 
   const [currentPage, setCurrentPage] = useState(1);

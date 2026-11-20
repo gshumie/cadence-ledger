@@ -97,4 +97,6 @@ export interface TransactionFilters {
   sortOrder: 'asc' | 'desc';
 }
 
+export type Currency = 'USD' | 'ETB';
+
 export type Theme = 'light' | 'dark' | 'system';

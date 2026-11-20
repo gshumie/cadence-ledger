@@ -2,6 +2,7 @@
 
 import React, { useRef, useState } from 'react';
 import { useFinance } from '@/context/FinanceContext';
+import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/components/ThemeProvider';
 import { exportTransactionsToCSV, parseCSVToTransactions } from '@/utils/exportImport';
 import {
@@ -16,6 +17,9 @@ import {
   Sparkles,
   Database,
   RefreshCw,
+  LogIn,
+  LogOut,
+  ChevronDown,
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -39,9 +43,11 @@ export function Header({ onOpenAddModal, onOpenBudgetModal }: HeaderProps) {
     currency,
     setCurrency,
   } = useFinance();
+  const { isDemoUser, openAuthModal, signOut, switchToDemo } = useAuth();
   const { resolvedTheme, toggleTheme } = useTheme();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showDbInfo, setShowDbInfo] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   const handleExport = () => {
     const dataToExport = filteredTransactions.length > 0 ? filteredTransactions : transactions;
@@ -150,17 +156,97 @@ export function Header({ onOpenAddModal, onOpenBudgetModal }: HeaderProps) {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-              <span>{currentUser.name}</span>
-              <button
-                onClick={() => refreshData()}
-                disabled={isSyncing}
-                title="Sync with database"
-                className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-slate-500 hover:bg-slate-100 hover:text-indigo-600 dark:hover:bg-slate-800 dark:hover:text-indigo-400 disabled:opacity-50"
-              >
-                <RefreshCw className={`h-3 w-3 ${isSyncing ? 'animate-spin text-indigo-500' : ''}`} />
-                <span>{isSyncing ? 'Syncing...' : 'Sync'}</span>
-              </button>
+            <div className="relative">
+              <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                <button
+                  onClick={() => setShowUserMenu((prev) => !prev)}
+                  className="flex items-center gap-1.5 rounded-md px-1.5 py-0.5 font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                  title="Manage account & session"
+                >
+                  <span
+                    className={`inline-block h-2 w-2 rounded-full ${
+                      isDemoUser ? 'bg-amber-400' : 'bg-emerald-500'
+                    }`}
+                  />
+                  <span className="font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[140px]">
+                    {currentUser.name}
+                  </span>
+                  <ChevronDown className="h-3 w-3 text-slate-400" />
+                </button>
+
+                <button
+                  onClick={() => refreshData()}
+                  disabled={isSyncing}
+                  title="Sync with database"
+                  className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-slate-500 hover:bg-slate-100 hover:text-indigo-600 dark:hover:bg-slate-800 dark:hover:text-indigo-400 disabled:opacity-50"
+                >
+                  <RefreshCw className={`h-3 w-3 ${isSyncing ? 'animate-spin text-indigo-500' : ''}`} />
+                  <span className="hidden sm:inline">{isSyncing ? 'Syncing...' : 'Sync'}</span>
+                </button>
+              </div>
+
+              {/* User Account Dropdown */}
+              {showUserMenu && (
+                <div className="absolute left-0 top-7 z-50 w-64 rounded-xl border border-slate-200 bg-white p-3 shadow-xl dark:border-slate-800 dark:bg-slate-900">
+                  <div className="pb-2 border-b border-slate-100 dark:border-slate-800">
+                    <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                      {currentUser.name}
+                    </p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                      {currentUser.email}
+                    </p>
+                    <div className="mt-1">
+                      <span
+                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                          isDemoUser
+                            ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400'
+                            : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400'
+                        }`}
+                      >
+                        {isDemoUser ? 'Demo Mode Session' : 'Private Supabase Account'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="mt-2 space-y-1">
+                    {isDemoUser ? (
+                      <button
+                        onClick={() => {
+                          setShowUserMenu(false);
+                          openAuthModal('signin');
+                        }}
+                        className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-indigo-600 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-950/50"
+                      >
+                        <LogIn className="h-3.5 w-3.5" />
+                        <span>Sign In / Create Account</span>
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => {
+                            setShowUserMenu(false);
+                            switchToDemo();
+                          }}
+                          className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                        >
+                          <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+                          <span>Switch to Demo Account</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowUserMenu(false);
+                            signOut();
+                          }}
+                          className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/50"
+                        >
+                          <LogOut className="h-3.5 w-3.5" />
+                          <span>Sign Out</span>
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -261,6 +347,27 @@ export function Header({ onOpenAddModal, onOpenBudgetModal }: HeaderProps) {
                 <span className="hidden sm:inline">ETB</span>
               </button>
             </div>
+
+            {/* Auth CTA Button */}
+            {isDemoUser ? (
+              <button
+                onClick={() => openAuthModal('signin')}
+                title="Sign in with your private Supabase account"
+                className="flex h-9 items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 text-xs font-semibold text-indigo-600 shadow-xs transition hover:bg-indigo-100 dark:border-indigo-900/60 dark:bg-indigo-950/60 dark:text-indigo-300 dark:hover:bg-indigo-900/80"
+              >
+                <LogIn className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Sign In</span>
+              </button>
+            ) : (
+              <button
+                onClick={signOut}
+                title="Sign out of account"
+                className="flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 shadow-xs transition hover:bg-slate-50 hover:text-rose-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-rose-400"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Sign Out</span>
+              </button>
+            )}
 
             {/* Dark Mode Toggle */}
             <button

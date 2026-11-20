@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { FinanceProvider, useFinance } from '@/context/FinanceContext';
+import { AuthProvider } from '@/context/AuthContext';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { Header } from '@/components/Header';
 import { SummaryCards } from '@/components/SummaryCards';
@@ -13,6 +14,7 @@ import { BudgetManager } from '@/components/BudgetManager';
 import { TransactionTable } from '@/components/TransactionTable';
 import { TransactionModal } from '@/components/TransactionModal';
 import { BudgetModal } from '@/components/BudgetModal';
+import { AuthModal } from '@/components/AuthModal';
 import { AnalyticsView } from '@/components/AnalyticsView';
 import { Transaction } from '@/types/finance';
 import {
@@ -196,6 +198,8 @@ function DashboardContent() {
         isOpen={isBudgetModalOpen}
         onClose={() => setIsBudgetModalOpen(false)}
       />
+
+      <AuthModal />
     </div>
   );
 }
@@ -203,9 +207,11 @@ function DashboardContent() {
 export default function Home() {
   return (
     <ThemeProvider>
-      <FinanceProvider>
-        <DashboardContent />
-      </FinanceProvider>
+      <AuthProvider>
+        <FinanceProvider>
+          <DashboardContent />
+        </FinanceProvider>
+      </AuthProvider>
     </ThemeProvider>
   );
 }

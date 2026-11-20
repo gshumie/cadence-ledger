@@ -12,6 +12,7 @@ import {
   ExpenseCategory,
   Currency,
 } from '@/types/finance';
+import { useAuth } from '@/context/AuthContext';
 import { INITIAL_BUDGETS, INITIAL_TRANSACTIONS } from '@/utils/initialData';
 import {
   getCategoryColor,
@@ -40,6 +41,7 @@ interface FinanceContextType {
   isSyncing: boolean;
   dbStatus: 'connected' | 'disconnected' | 'connection_error';
   currentUser: UserSession;
+  isDemoUser: boolean;
   
   // Actions
   addTransaction: (data: Omit<Transaction, 'id' | 'createdAt'>) => Promise<void>;
@@ -75,6 +77,8 @@ const defaultFilters: TransactionFilters = {
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
 
 export function FinanceProvider({ children }: { children: React.ReactNode }) {
+  const { accessToken, user: authUser, isDemoUser } = useAuth();
+
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [budgets, setBudgets] = useState<BudgetLimit[]>(INITIAL_BUDGETS);
   const [selectedMonth, setSelectedMonth] = useState<string>('2026-11');
@@ -83,11 +87,35 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [dbStatus, setDbStatus] = useState<'connected' | 'disconnected' | 'connection_error'>('disconnected');
   const [currentUser, setCurrentUser] = useState<UserSession>({
-    id: 'usr_cadence_default',
-    email: 'alex.finance@cadenceledger.io',
-    name: 'Alex Mercer',
+    id: authUser.id,
+    email: authUser.email,
+    name: authUser.name,
   });
   const [currency, setCurrencyState] = useState<Currency>('USD');
+
+  // Sync currentUser with AuthContext user
+  useEffect(() => {
+    setCurrentUser({
+      id: authUser.id,
+      email: authUser.email,
+      name: authUser.name,
+    });
+  }, [authUser]);
+
+  // Authenticated fetch helper attaching Supabase JWT token if available
+  const authFetch = useCallback(
+    (url: string, init: RequestInit = {}) => {
+      const headers = new Headers(init.headers || {});
+      if (accessToken) {
+        headers.set('Authorization', `Bearer ${accessToken}`);
+      }
+      return fetch(url, {
+        ...init,
+        headers,
+      });
+    },
+    [accessToken]
+  );
 
   // Load currency from localStorage on client mount
   useEffect(() => {
@@ -127,7 +155,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     setIsSyncing(true);
     try {
       // 1. Fetch user & database status
-      const authRes = await fetch('/api/auth/me');
+      const authRes = await authFetch('/api/auth/me');
       if (authRes.ok) {
         const authData = await authRes.json();
         if (authData.user) {
@@ -139,7 +167,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       }
 
       // 2. Fetch transactions from API
-      const txRes = await fetch('/api/transactions?month=all');
+      const txRes = await authFetch('/api/transactions?month=all');
       if (txRes.ok) {
         const txJson = await txRes.json();
         if (Array.isArray(txJson.data)) {
@@ -151,7 +179,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       }
 
       // 3. Fetch budgets from API
-      const budgetRes = await fetch('/api/budgets');
+      const budgetRes = await authFetch('/api/budgets');
       if (budgetRes.ok) {
         const budgetJson = await budgetRes.json();
         const rawBudgets = Array.isArray(budgetJson.data)
@@ -183,11 +211,11 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
       setIsSyncing(false);
       setIsLoaded(true);
     }
-  }, []);
+  }, [authFetch]);
 
   useEffect(() => {
     refreshData();
-  }, [refreshData]);
+  }, [refreshData, accessToken, authUser.id]);
 
   // Extract unique available months sorted descending
   const availableMonths = useMemo(() => {
@@ -414,7 +442,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     setTransactions((prev) => [optimisticTx, ...prev]);
 
     try {
-      const res = await fetch('/api/transactions', {
+      const res = await authFetch('/api/transactions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
@@ -441,7 +469,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     );
 
     try {
-      await fetch(`/api/transactions/${id}`, {
+      await authFetch(`/api/transactions/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
@@ -456,7 +484,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     setTransactions((prev) => prev.filter((tx) => tx.id !== id));
 
     try {
-      await fetch(`/api/transactions/${id}`, {
+      await authFetch(`/api/transactions/${id}`, {
         method: 'DELETE',
       });
     } catch (err) {
@@ -475,7 +503,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     });
 
     try {
-      await fetch('/api/budgets', {
+      await authFetch('/api/budgets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ category, limit, period: 'monthly' }),
@@ -492,7 +520,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
   const resetToSampleData = async () => {
     setIsSyncing(true);
     try {
-      await fetch('/api/seed', { method: 'POST' });
+      await authFetch('/api/seed', { method: 'POST' });
       await refreshData();
     } catch (err) {
       console.error('Failed to reset sample data via API:', err);
@@ -538,6 +566,7 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
         isSyncing,
         dbStatus,
         currentUser,
+        isDemoUser,
         addTransaction,
         updateTransaction,
         deleteTransaction,

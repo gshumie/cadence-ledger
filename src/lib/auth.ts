@@ -36,7 +36,11 @@ export async function getAuthenticatedUser(req: Request): Promise<AuthUser> {
         user = {
           id: data.user.id,
           email: data.user.email || DEFAULT_USER.email,
-          name: data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'Cadence User',
+          name:
+            data.user.user_metadata?.name ||
+            data.user.user_metadata?.full_name ||
+            data.user.email?.split('@')[0] ||
+            'Cadence User',
         };
       }
     } catch (err) {

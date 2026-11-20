@@ -11,25 +11,37 @@ A modern, full-stack personal finance and expense tracker web application built 
   - **Cash Flow Trend**: Area chart tracking monthly income vs. expense performance over time.
   - **Category Breakdown**: Donut chart displaying spending distribution with hover metrics and interactive legend.
   - **Budget vs. Actual**: Grouped bar chart visualizing budgeted limits against actual burn rate.
-- **🎯 Budget Planning & Limit Alerts**:
-  - Category-based budget limits with real-time percentage utilization.
-  - Visual status indicators (**On Track**, **Near Limit** at 80%+, **Over Budget** at 100%+).
-  - Dynamic insight banners highlighting at-risk spending categories.
+- **🔄 Recurring Transactions & Subscriptions**:
+  - Track repetitive income and recurring bills (weekly, monthly, yearly cycles).
+  - Next due date tracking with automatic month-end rollover protection.
+  - **One-Click "Log Now"**: Instantly post recurring transactions to the ledger and advance the date to the next cycle.
+  - Normalized KPI metrics: Monthly Fixed Outflow, Recurring Inflow, and Active Rules count.
+- **🔔 Smart Alerts & Spending Thresholds**:
+  - Proactive banner highlighting bills due within 7 days (or overdue) with one-click navigation.
+  - Visual budget status indicators (**On Track**, **Near Limit** at 75%+, **Over Budget** at 100%+).
   - Interactive modal to adjust and persist budget limits with immediate recalculation.
+- **🇪🇹 Dual Currency Support (ETB & USD)**:
+  - One-click header toggle between **US Dollar ($)** and **Ethiopian Birr (Br ETB)**.
+  - Dynamic currency formatting across dashboard cards, charts, budget bars, transactions ledger, and modals.
+  - Persistent preference saved in `localStorage`.
+- **🔐 Multi-User Authentication & Demo Mode**:
+  - Supabase Auth integration with secure JWT bearer authentication.
+  - Instant **Demo Mode** (`usr_cadence_default`) for evaluating features without registration.
+  - Strict user-scoped database isolation across all Prisma models.
 - **💳 Comprehensive Transaction Ledger**:
   - Instant live search across merchant/title, category, notes, and amount.
-  - Filtering by transaction type (**All**, **Income**, **Expense**), category, and date range preset (**This Month**, **Last Month**, **Last 3 Months**, **This Year**, **All**).
+  - Filtering by transaction type (**All**, **Income**, **Expense**), category, and date range preset.
   - Multi-column sorting (Date, Amount, Merchant).
   - Add, edit, and delete transactions with instant UI updates and celebratory confetti animations.
   - Pagination controls with configurable items per page.
 - **📥 CSV Data Portability**:
   - Export filtered or all ledger transactions directly into RFC-4180 compliant CSV format.
   - Import external bank statements via CSV parser.
+- **🛡️ Production Hardened & Resilient**:
+  - Standard security headers (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`).
+  - Global error boundary (`error.tsx`) and smooth suspense loading UI (`loading.tsx`).
+  - Dedicated service and database connectivity health check (`/api/health`).
 - **🌓 Dark & Light Mode**: Theme switching with system preference detection and local storage persistence.
-- **🗄️ Resilient Architecture (Database & Offline Fallback)**:
-  - First-class PostgreSQL integration via Prisma ORM and Supabase.
-  - Graceful fallback to local cache/sample data if the database is disconnected or offline.
-  - Built-in one-click database sync and demo dataset seed endpoints.
 
 ---
 
@@ -56,34 +68,64 @@ Supabase utilizes connection poolers (Supavisor / PgBouncer) to handle serverles
    - Used for all runtime queries in serverless Next.js API routes to handle ephemeral connection spikes without exhausting database connection limits.
 2. **`DIRECT_URL` (Port 5432 — Session Mode)**:
    - Direct session pooler connection.
-   - Required by Prisma for migrations (`npx prisma migrate dev`) and schema synchronization (`npx prisma db push`), as DDL statements and advisory locks cannot run in transaction mode.
+   - Required by Prisma for migrations and schema synchronization (`npx prisma db push`), as DDL statements and advisory locks cannot run in transaction mode.
 
 ### Prisma Schema Models
 
 - **`User`**: Core user entity (`id`, `email`, `name`, `avatarUrl`, timestamps).
 - **`Transaction`**: Records income and expense entries (`userId`, `title`, `amount`, `type`, `category`, `date`, `paymentMethod`, `notes`). Indexed by `[userId]`, `[userId, date]`, and `[userId, category]`.
 - **`Budget`**: Monthly category limits (`userId`, `category`, `limit`, `period`). Unique on `[userId, category]`.
+- **`RecurringTransaction`**: Automated recurrence rules (`userId`, `title`, `amount`, `type`, `category`, `paymentMethod`, `frequency`, `nextDate`, `isActive`, `notes`). Indexed by `[userId]` and `[userId, nextDate]`.
 
 ---
 
 ## 🌐 API Routes Summary
 
-All endpoints are built using Next.js App Router route handlers (`src/app/api/...`) with strict type validation:
+All endpoints are built using Next.js App Router route handlers (`src/app/api/...`) with strict type validation and authenticated user scoping:
 
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
+| `GET` | `/api/health` | Service status, database latency, and connectivity check. |
 | `GET` | `/api/summary` | Aggregate metrics (balance, income, expense, savings rate, category breakdown, cashflow trend). Supports `?month=YYYY-MM`. |
 | `GET` | `/api/transactions` | Fetch transactions with search (`?search=`), filtering (`?type=`, `?category=`, `?startDate=`, `?endDate=`), and pagination (`?page=`, `?limit=`). |
 | `POST` | `/api/transactions` | Create a new transaction with input validation. |
 | `GET` | `/api/transactions/[id]` | Fetch a single transaction by ID. |
 | `PATCH` / `PUT` | `/api/transactions/[id]` | Update an existing transaction. |
 | `DELETE` | `/api/transactions/[id]` | Delete a transaction permanently from PostgreSQL. |
+| `GET` | `/api/recurring` | Fetch recurring rules sorted by next due date; auto-seeds demo subscriptions if empty. |
+| `POST` | `/api/recurring` | Create a new recurring rule or subscription. |
+| `GET` | `/api/recurring/[id]` | Fetch a single recurring transaction rule. |
+| `PATCH` | `/api/recurring/[id]` | Update rule or toggle active/paused status. |
+| `DELETE` | `/api/recurring/[id]` | Delete a recurring rule. |
+| `POST` | `/api/recurring/[id]/process` | **One-Click Log Now**: Creates a real ledger transaction and advances `nextDate` to the next cycle. |
 | `GET` | `/api/budgets` | Fetch budget limits with calculated actual spending, remaining amount, and utilization percentage. |
 | `POST` | `/api/budgets` | Create or upsert a category budget limit. |
 | `PATCH` / `PUT` | `/api/budgets/[id]` | Update an existing budget limit. |
 | `DELETE` | `/api/budgets/[id]` | Remove a category budget limit. |
-| `GET` | `/api/auth/me` | Fetch or auto-provision the default active session user. |
-| `POST` | `/api/seed` | Seed realistic multi-month sample transactions and budgets into PostgreSQL. |
+| `GET` | `/api/auth/me` | Fetch active session user and database connection state. |
+| `POST` | `/api/seed` | Seed realistic multi-month sample transactions, budgets, and recurring rules. |
+
+---
+
+## 🌐 Custom Domain Setup & DNS Configuration
+
+If you wish to attach a custom domain (e.g. `cadenceledger.io` or `app.yourdomain.com`) to your Vercel deployment:
+
+### 1. Add Domain in Vercel
+Via Vercel CLI:
+```bash
+npx vercel domains add yourdomain.com
+```
+Or via the Vercel Dashboard under **Project Settings -> Domains**.
+
+### 2. Configure DNS Records at your Domain Registrar
+
+| Record Type | Name / Host | Value / Target | Notes |
+| :--- | :--- | :--- | :--- |
+| **`A`** | `@` (or apex domain) | `76.76.21.21` | Points your root domain directly to Vercel's global edge network. |
+| **`CNAME`** | `www` (or `app`) | `cname.vercel-dns.com` | Recommended for subdomains. |
+
+Once DNS propagation completes (typically 1–15 minutes), Vercel automatically provisions and renews a free **Let's Encrypt SSL/TLS Certificate**.
 
 ---
 
@@ -96,7 +138,7 @@ All endpoints are built using Next.js App Router route handlers (`src/app/api/..
 ### 2. Clone and Install Dependencies
 
 ```bash
-git clone https://github.com/your-username/cadence-ledger.git
+git clone https://github.com/gshumie/cadence-ledger.git
 cd cadence-ledger
 npm install
 ```
@@ -130,7 +172,7 @@ NEXTAUTH_URL="http://localhost:3000"
 
 ### 4. Push Schema to Database
 
-Push the Prisma schema to create the `users`, `transactions`, and `budgets` tables in Supabase:
+Push the Prisma schema to create the `users`, `transactions`, `budgets`, and `recurring_transactions` tables in Supabase:
 
 ```bash
 npx prisma db push
@@ -170,49 +212,14 @@ npm run build
 
 ---
 
-## 🚢 Vercel Deployment Guide
+## 🚢 Vercel Production Deployment
 
-Deploying Cadence Ledger to Vercel is seamless:
-
-### Step 1: Push Code to GitHub
-Ensure all changes are committed and pushed to your GitHub repository:
 ```bash
-git add .
-git commit -m "feat: complete personal finance tracker with Prisma & Supabase"
-git push origin master
+# Deploy to production with Vercel CLI
+npx vercel --prod --yes
 ```
 
-### Step 2: Import Project in Vercel
-1. Log in to [Vercel](https://vercel.com/) and click **Add New...** -> **Project**.
-2. Select your `cadence-ledger` repository and click **Import**.
-3. Keep the default build settings:
-   - **Framework Preset**: Next.js
-   - **Build Command**: `next build` (or left default)
-   - **Output Directory**: `.next` (default)
-   - **Install Command**: `npm install` (default, which automatically executes `postinstall: prisma generate`)
-
-### Step 3: Add Environment Variables in Vercel
-In the Vercel project configuration page under **Environment Variables**, add:
-
-| Key | Value | Target Environments |
-| :--- | :--- | :--- |
-| `DATABASE_URL` | Your Supabase transaction pooler URL (port `6543`, `?pgbouncer=true`) | Production, Preview, Development |
-| `DIRECT_URL` | Your Supabase session pooler URL (port `5432`) | Production, Preview, Development |
-| `NEXT_PUBLIC_SUPABASE_URL` | `https://[YOUR-PROJECT-REF].supabase.co` | Production, Preview, Development |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Your Supabase anonymous public key | Production, Preview, Development |
-| `NEXTAUTH_SECRET` | A secure random 32-character string | Production, Preview, Development |
-| `NEXTAUTH_URL` | `https://your-deployment-url.vercel.app` (or leave default for preview) | Production |
-
-### Step 4: Deploy
-Click **Deploy**. Vercel will:
-1. Install dependencies and trigger `prisma generate` via `postinstall`.
-2. Compile and optimize the Next.js App Router application.
-3. Deploy the application to a worldwide edge/serverless network.
-
-### Step 5: Post-Deployment Verification
-- Open your live Vercel URL.
-- Check the **Supabase DB** status indicator in the top header.
-- Add a test transaction and verify it saves and updates the dashboard charts in real time.
+Live Production Deployment: **[https://cadence-ledger.vercel.app](https://cadence-ledger.vercel.app)**
 
 ---
 

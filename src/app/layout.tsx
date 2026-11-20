@@ -1,11 +1,54 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Cadence Ledger | Modern Personal Finance & Expense Tracker',
+  metadataBase: new URL('https://cadence-ledger.vercel.app'),
+  title: {
+    default: 'Cadence Ledger | Modern Personal Finance & Expense Tracker',
+    template: '%s | Cadence Ledger',
+  },
   description:
-    'A sleek, responsive, and full-featured personal finance and expense tracking dashboard built with Next.js, Tailwind CSS, and Recharts.',
-  keywords: ['personal finance', 'expense tracker', 'budget planner', 'cash flow', 'cadence ledger'],
+    'A private, client-side encrypted personal finance and expense tracking dashboard built with Next.js, Tailwind CSS, Recharts, and Supabase PostgreSQL.',
+  keywords: [
+    'personal finance',
+    'expense tracker',
+    'budget planner',
+    'cash flow',
+    'recurring bills',
+    'smart alerts',
+    'cadence ledger',
+    'supabase postgresql',
+    'prisma',
+  ],
+  authors: [{ name: 'Cadence Ledger Team' }],
+  creator: 'Cadence Ledger',
+  openGraph: {
+    title: 'Cadence Ledger | Modern Personal Finance & Expense Tracker',
+    description:
+      'Real-time cash flow analytics, monthly category budgets, recurring subscriptions, and multi-user authentication with Supabase PostgreSQL.',
+    url: 'https://cadence-ledger.vercel.app',
+    siteName: 'Cadence Ledger',
+    locale: 'en_US',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Cadence Ledger | Modern Personal Finance & Expense Tracker',
+    description:
+      'Real-time cash flow analytics, monthly category budgets, recurring subscriptions, and smart alerts.',
+  },
+  icons: {
+    icon: '/favicon.ico',
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#070b14' },
+  ],
+  width: 'device-width',
+  initialScale: 1,
 };
 
 export default function RootLayout({

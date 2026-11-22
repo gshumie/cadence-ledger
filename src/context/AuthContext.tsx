@@ -184,20 +184,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return { success: false, error: error.message };
         }
 
-        // If email confirmation is enabled on Supabase project, user exists but session is null
-        if (data.user && !data.session) {
-          return {
-            success: true,
-            message:
-              'Account created! A confirmation email has been sent. Please verify your address, then sign in.',
-          };
-        }
-
         if (data.session) {
           setSession(data.session);
           setUser(mapSessionToProfile(data.session));
           setIsAuthModalOpen(false);
           return { success: true, message: 'Account created and signed in!' };
+        }
+
+        // If email confirmation is disabled or auto-confirmed, attempt immediate session establishment
+        if (data.user && !data.session) {
+          try {
+            const { data: signInData, error: signInError } =
+              await supabase.auth.signInWithPassword({
+                email: email.trim(),
+                password,
+              });
+
+            if (!signInError && signInData?.session) {
+              setSession(signInData.session);
+              setUser(mapSessionToProfile(signInData.session));
+              setIsAuthModalOpen(false);
+              return { success: true, message: 'Account created and signed in!' };
+            }
+          } catch {
+            // Ignore fallback error and inform user
+          }
+
+          return {
+            success: true,
+            message:
+              'Account created! A confirmation email has been sent. Please verify your address, then sign in.',
+          };
         }
 
         return { success: true, message: 'Account created successfully.' };
